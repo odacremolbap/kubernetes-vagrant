@@ -1,0 +1,144 @@
+# -*- mode: ruby -*-
+# # vi: set ft=ruby :
+
+require 'fileutils'
+require 'json'
+require 'ipaddr'
+
+Vagrant.require_version ">= 1.9.0"
+
+# # Make sure the vagrant-ignition plugin is installed
+# required_plugins = %w(vagrant-ignition)
+#
+# plugins_to_install = required_plugins.select { |plugin| not Vagrant.has_plugin? plugin }
+# if not plugins_to_install.empty?
+#   puts "Installing plugins: #{plugins_to_install.join(' ')}"
+#   if system "vagrant plugin install #{plugins_to_install.join(' ')}"
+#     exec "vagrant #{ARGV.join(' ')}"
+#   else
+#     abort "Installation of one or more plugins has failed. Aborting."
+#   end
+# end
+
+def increase_ip(ipaddress, increment)
+  temp = ipaddress
+  for i in 1..(increment - 1) do
+    temp = temp.succ
+  end
+  return temp.to_s()
+end
+
+current_directory = File.dirname(File.expand_path(__FILE__))
+# cfg = YAML.load_file("#{current_directory}/../config.yml")
+config_file = File.read("#{current_directory}/../config.json")
+cfg = JSON.parse(config_file)
+os_box = cfg['os']['box']
+etcds = cfg['instances']['etcd']
+masters = cfg['instances']['masters']
+workers = cfg['instances']['workers']
+
+first_ip = IPAddr.new etcds['first_ip']
+etcd_ips = [*1..etcds['count']].map{ |i| increase_ip(first_ip, i) }
+
+first_ip = IPAddr.new masters['first_ip']
+masters_ips = [*1..masters['count']].map{ |i| increase_ip(first_ip, i) }
+
+first_ip = IPAddr.new workers['first_ip']
+workers_ips = [*1..workers['count']].map{ |i| increase_ip(first_ip, i) }
+
+Vagrant.configure("2") do |config|
+
+  config.ssh.insert_key = false
+  config.ssh.forward_agent = true
+  config.vm.box = os_box
+
+  (1..etcds['count']).each do |i|
+    config.vm.define vm_name = "etcd-%d" % i do |etcd|
+
+      etcd.vm.provider :virtualbox do |vb|
+        vb.cpus = 1
+        vb.memory = etcds['memory']
+        vb.gui = false
+      end
+
+      etcd.vm.hostname = vm_name
+      etcd.vm.network :private_network, ip: etcd_ips[i-1]
+    end
+  end
+
+  (1..masters['count']).each do |i|
+    config.vm.define vm_name = "master-%d" % i do |master|
+
+      master.vm.provider :virtualbox do |vb|
+        vb.cpus = 1
+        vb.memory = masters['memory']
+        vb.gui = false
+      end
+
+      master.vm.hostname = vm_name
+      master.vm.network :private_network, ip: masters_ips[i-1]
+    end
+  end
+
+  (1..workers['count']).each do |i|
+    config.vm.define vm_name = "worker-%d" % i do |worker|
+
+      worker.vm.provider :virtualbox do |vb|
+        vb.cpus = 1
+        vb.memory = workers['memory']
+        vb.gui = false
+      end
+
+      worker.vm.hostname = vm_name
+      worker.vm.network :private_network, ip: workers_ips[i-1]
+    end
+  end
+
+  # config.vm.provider :virtualbox do |v|
+  #   v.check_guest_additions = false
+  #   v.functional_vboxsf     = false
+  # end
+
+  # # plugin conflict
+  # if Vagrant.has_plugin?("vagrant-vbguest") then
+  #   config.vbguest.auto_update = false
+  # end
+
+  # instances.each do |instance|
+  #   config.vm.define vm_name = instance['name'] do |ins|
+  #     ins.vm.hostname = vm_name
+  #
+  #     if instance["role"] == "master"
+  #       ins.vm.network "forwarded_port", guest: 6443, host: 6443, protocol: "tcp", enabled: true, autocorrect: true
+  #     end
+  #
+  #     shared = instance['shared']
+  #     if shared != nil
+  #       shared.each do |sh|
+  #         # ins.vm.synced_folder sh['source'], sh['dest'], id: sh['id'], nfs: true, mount_options: ['nolock,vers=3,udp']
+  #         ins.vm.synced_folder sh['source'], sh['dest'], id: sh['id']
+  #       end
+  #     end
+  #
+  #     ins.vm.provider :virtualbox do |vb|
+  #       vb.gui = false
+  #       vb.memory = instance["memory"]
+  #       vb.cpus = 1
+  #       vb.customize ["modifyvm", :id, "--cpuexecutioncap", "#{$vb_cpuexecutioncap}"]
+  #       ins.ignition.config_obj = vb
+  #     end
+  #
+  #     ip = instance["ip"]
+  #     ins.vm.network :private_network, ip: ip
+  #     # This tells Ignition what the IP for eth1 (the host-only adapter) should be
+  #     ins.ignition.ip = ip
+  #
+  #     ins.vm.provider :virtualbox do |vb|
+  #       ins.ignition.hostname = vm_name
+  #       ins.ignition.drive_name = "config_" + instance['name']
+  #     end
+  #   end
+  # end
+
+
+end
