@@ -8,3 +8,5 @@ if (vagrant status | grep "running" -q); then
 fi
 
 popd
+
+rm -rf ./ssh-config.file ./02_etcd/temp/

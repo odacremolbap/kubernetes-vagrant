@@ -1,6 +1,6 @@
 {
   "os": {
-    "box": "ubuntu/artful64"
+    "box": "ubuntu/bionic64"
   },
   "instances": {
     "etcd": {
