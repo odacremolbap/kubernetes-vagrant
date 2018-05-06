@@ -9,4 +9,7 @@ fi
 
 popd
 
-rm -rf ./ssh-config.file ./02_etcd/temp/
+rm -rf ./ssh-config.file \
+        ./01_vagrant/*.log \
+        ./02_certificates/* \
+        ./03_etcd/temp/ \

@@ -5,7 +5,8 @@ set -euxo pipefail
 BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 . ./01_vagrant.sh
-. ./02_etcd.sh
+. ./02_certificates.sh
+. ./03_etcd.sh
 
 # Step 2: Install etcd
 

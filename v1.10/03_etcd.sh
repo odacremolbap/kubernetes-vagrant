@@ -6,7 +6,7 @@ ETCD_VER="v3.3.4"
 VAGRANT_DIR="$BASE_DIR/01_vagrant"
 CONFIG_FILE="$BASE_DIR/config.json"
 TEMP_DIR="$BASE_DIR/temp"
-ETCD_ASSETS_DIR="$BASE_DIR/02_etcd"
+ETCD_ASSETS_DIR="$BASE_DIR/03_etcd"
 
 ETCD_COUNT=$(jq '.instances.etcd.count' $CONFIG_FILE)
 ETCD_START_IP=$(jq '.instances.etcd.first_ip' $CONFIG_FILE)
