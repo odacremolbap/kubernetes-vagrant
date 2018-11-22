@@ -2,7 +2,7 @@
 
 set -euxo pipefail
 
-ETCD_VER="v3.3.4"
+ETCD_VER="v3.3.8"
 VAGRANT_DIR="$BASE_DIR/01_vagrant"
 CONFIG_FILE="$BASE_DIR/config.json"
 TEMP_DIR="$BASE_DIR/temp"

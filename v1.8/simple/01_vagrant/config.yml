@@ -1,0 +1,29 @@
+---
+
+os:
+  box: 'coreos-stable'
+  url: 'https://stable.release.core-os.net/amd64-usr/current/coreos_production_vagrant_virtualbox.json'
+
+instances:
+- name: "launcher1"
+  ip: "192.168.56.110"
+  memory: 1024
+  shared:
+  - id: "root"
+    source: "/home/pablo/development/spc/kubernetes-ops"
+    dest: "/home/core/kubernetes-ops"
+
+- name: "master1"
+  ip: "192.168.56.101"
+  memory: 1024
+  role: "master"
+
+- name: "worker1"
+  ip: "192.168.56.102"
+  memory: 1024
+  role: "worker"
+
+- name: "worker2"
+  ip: "192.168.56.103"
+  memory: 1024
+  role: "worker"

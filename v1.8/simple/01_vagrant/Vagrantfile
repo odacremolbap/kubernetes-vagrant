@@ -1,0 +1,122 @@
+# -*- mode: ruby -*-
+# # vi: set ft=ruby :
+
+require 'fileutils'
+require 'yaml'
+
+Vagrant.require_version ">= 1.6.0"
+
+# Make sure the vagrant-ignition plugin is installed
+required_plugins = %w(vagrant-ignition)
+
+plugins_to_install = required_plugins.select { |plugin| not Vagrant.has_plugin? plugin }
+if not plugins_to_install.empty?
+  puts "Installing plugins: #{plugins_to_install.join(' ')}"
+  if system "vagrant plugin install #{plugins_to_install.join(' ')}"
+    exec "vagrant #{ARGV.join(' ')}"
+  else
+    abort "Installation of one or more plugins has failed. Aborting."
+  end
+end
+
+current_directory = File.dirname(File.expand_path(__FILE__))
+cfg = YAML.load_file("#{current_directory}/config.yml")
+os_box = cfg['os']['box']
+os_url = cfg['os']['url']
+instances = cfg['instances']
+launchers = cfg['launchers']
+
+$vb_cpuexecutioncap = 100
+
+Vagrant.configure("2") do |config|
+  # always use Vagrants insecure key
+  config.ssh.insert_key = false
+  # forward ssh agent to easily ssh into the different machines
+  config.ssh.forward_agent = true
+
+  config.vm.box = os_box
+  config.vm.box_url = os_url
+
+  config.vm.provider :virtualbox do |v|
+    # On VirtualBox, we don't have guest additions or a functional vboxsf
+    # in CoreOS, so tell Vagrant that so it can be smarter.
+    v.check_guest_additions = false
+    v.functional_vboxsf     = false
+    # enable ignition (this is always done on virtualbox as this is how the ssh key is added to the system)
+    config.ignition.enabled = true
+  end
+
+  # plugin conflict
+  if Vagrant.has_plugin?("vagrant-vbguest") then
+    config.vbguest.auto_update = false
+  end
+
+  instances.each do |instance|
+    config.vm.define vm_name = instance['name'] do |ins|
+      ins.vm.hostname = vm_name
+
+      if instance["role"] == "master"
+        ins.vm.network "forwarded_port", guest: 6443, host: 6443, protocol: "tcp", enabled: true, autocorrect: true
+      end
+
+      shared = instance['shared']
+      if shared != nil
+        shared.each do |sh|
+          # ins.vm.synced_folder sh['source'], sh['dest'], id: sh['id'], nfs: true, mount_options: ['nolock,vers=3,udp']
+          ins.vm.synced_folder sh['source'], sh['dest'], id: sh['id']
+        end
+      end
+
+      ins.vm.provider :virtualbox do |vb|
+        vb.gui = false
+        vb.memory = instance["memory"]
+        vb.cpus = 1
+        vb.customize ["modifyvm", :id, "--cpuexecutioncap", "#{$vb_cpuexecutioncap}"]
+        ins.ignition.config_obj = vb
+      end
+
+      ip = instance["ip"]
+      ins.vm.network :private_network, ip: ip
+      # This tells Ignition what the IP for eth1 (the host-only adapter) should be
+      ins.ignition.ip = ip
+
+      ins.vm.provider :virtualbox do |vb|
+        ins.ignition.hostname = vm_name
+        ins.ignition.drive_name = "config_" + instance['name']
+      end
+    end
+  end
+
+  # launchers.each do |instance|
+  #   config.vm.define vm_name = instance['name'] do |ins|
+  #
+  #     ins.vm.hostname = vm_name
+  #
+  #     shared = instance['shared']
+  #     shared.each do |sh|
+  #       # ins.vm.synced_folder sh['source'], sh['dest'], id: sh['id'], nfs: true, mount_options: ['nolock,vers=3,udp']
+  #       ins.vm.synced_folder sh['source'], sh['dest'], id: sh['id']
+  #     end
+  #
+  #     ins.vm.provider :virtualbox do |vb|
+  #       vb.gui = false
+  #       vb.memory = instance["memory"]
+  #       vb.cpus = 1
+  #       vb.customize ["modifyvm", :id, "--cpuexecutioncap", "#{$vb_cpuexecutioncap}"]
+  #       ins.ignition.config_obj = vb
+  #     end
+  #
+  #     ip = instance["ip"]
+  #     ins.vm.network :private_network, ip: ip
+  #     # This tells Ignition what the IP for eth1 (the host-only adapter) should be
+  #     ins.ignition.ip = ip
+  #
+  #     ins.vm.provider :virtualbox do |vb|
+  #       ins.ignition.hostname = vm_name
+  #       ins.ignition.drive_name = "config_" + instance['name']
+  #     end
+  #
+  #   end
+  # end
+
+end

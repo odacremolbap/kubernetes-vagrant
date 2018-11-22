@@ -1,0 +1,22 @@
+{
+  "os": {
+    "box": "ubuntu/bionic64"
+  },
+  "instances": {
+    "etcd": {
+      "count": 2,
+      "first_ip": "192.168.56.10",
+      "memory": 512
+    },
+    "masters": {
+      "count": 1,
+      "first_ip": "192.168.56.20",
+      "memory": 1024
+    },
+    "workers": {
+      "count": 1,
+      "first_ip": "192.168.56.30",
+      "memory": 1024
+    }
+  }
+}
